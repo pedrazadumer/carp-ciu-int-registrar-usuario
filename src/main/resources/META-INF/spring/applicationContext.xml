@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cxf="http://camel.apache.org/schema/cxf"
+       xmlns:jaxrs="http://cxf.apache.org/jaxrs"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd
+       http://cxf.apache.org/jaxrs http://cxf.apache.org/schemas/jaxrs.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <cxf:rsServer id="restService" address="http://localhost:9000/employeeservice"
+                  serviceClass="co.edu.uniandes.carpciu.regusr.recursos.RecursoUsuario">
+                  <!--serviceClass="com.javainuse.beans.EmployeeServiceResource"-->
+        <cxf:providers>
+            <ref bean="jsonProvider"/>
+            <!--bean id="jackson" class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider"/-->
+        </cxf:providers>
+    </cxf:rsServer>
+
+    <bean id="processor" class="com.javainuse.beans.CamelProcessor" />
+    <bean id="processorRegistrarUsuario" class="co.edu.uniandes.carpciu.regusr.procesadores.ProcesadorRegistrarUsuario" />
+    <bean id="jsonProvider" class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider" />
+
+    <camelContext id="contexto-camel-registrar-usuario" xmlns="http://camel.apache.org/schema/spring">
+        <route id="ruta-registrar-usuario">
+            <from id="from-rest-registrar-usuario" uri="cxfrs://bean://restService" />
+
+            <log message="Peticion recibida en el endpoint REST expuesto por el Bus para el registro de usuarios. Peticion: [${body}]."/>
+
+            <!--process ref="processor" /-->
+            <process id="procesar-mapear-validar-usuario" ref="processorRegistrarUsuario" />
+
+            <log message="Enviando Peticion al servicio SOAP de validacion de usuarios. Peticion: [${body}]."/>
+
+            <to id="destino-validar-usuario-soap"
+                uri="cxf://http://localhost:8080/ws?serviceClass=co.gov.registraduria.commoncannonical.v3.schemas.CustomersPort&amp;defaultOperationName=getCustomerStatus"/>
+
+            <setHeader headerName="Content-Type">
+                <constant>application/json</constant>
+            </setHeader>
+            <setBody>
+                <simple>${body[0]}</simple>
+            </setBody>
+        </route>
+    </camelContext>
+
+</beans>
